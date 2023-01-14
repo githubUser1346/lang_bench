@@ -2,7 +2,8 @@ This project contains simple benchmarks for different languages.
 
 # Env
 
-This file assumes that java, cargo and go are installed.
+This file assumes that java, cargo and go are installed in /usr/bin
+For dev purposes, that location could be changed in  
 ```
 benchrunner/app/src/main/kotlin/benchrunner/App.kt
 ```
@@ -22,8 +23,8 @@ benchrunner/App.kt
 # Methodology
 
 There are many ways we can build a benchmark.
-Here are a few things that describe the benchmarks we have here.
-  
+Here are a few things that describe the benchmarks we have here (TLDR, they are DIY microbenchmarks)
+ 
 - Unlike some other benchmarks, we dont measure the process execution time. Instead, what is measured is a loop running a small task many times. 
 - Each task is run many times before we start measuring it. We call that the warmup.
 - We try to target only the cpu efficiency. Each task uses little memory, and no IO.
