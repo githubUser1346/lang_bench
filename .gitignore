@@ -1,0 +1,23 @@
+#intellij
+.idea
+*.iml
+out
+# gradle
+.gradle
+build
+# cargo
+target
+# clang
+a.out
+#clion
+**/cmake-build-debug
+#go
+go1/go1
+#clion
+**/cmake-build-debug
+#go
+go1/go1
+
+#benchrunner
+bench.conf
+temp.txt
