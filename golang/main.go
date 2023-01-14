@@ -6,6 +6,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"log"
 	"math/rand"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -18,26 +19,25 @@ type BenchResult struct {
 	Ms     int    `json:"ms"`
 }
 
-const ITER_COUNT = 50_000_000
-const NUM_THREADS = 16
-
-const ITER_COUNT_MINI = 100_000
-const ITER_COUNT_SMALL = 1_000_000
-const ITER_COUNT_MEDIUM = 10_000_000
+var effort = parseEffort()
+var effortSmall = 10_000 * effort
+var effortMedium = 100_000 * effort
+var effortBig = 1000_000 * effort
 
 func main() {
+	fmt.Printf("# effort: %d\n", effort)
 	for i := 0; i < 5; i++ {
 		var nondeterministicData = nondeterministicArray()
-		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", ITER_COUNT_MEDIUM)
-		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", ITER_COUNT_MINI)
-		benchComplexAutoVectoLoop(nondeterministicData, "complexAutoVectoLoop", ITER_COUNT_MEDIUM)
-		benchTrivialAutoVectoLoop(nondeterministicData, "trivialAutoVectoLoop", ITER_COUNT_SMALL)
-		benchBranchingAutoVectoLoop(nondeterministicData, "branchingAutoVectoLoop", ITER_COUNT_SMALL)
-		benchItoa(nondeterministicData, "itoa", ITER_COUNT_MEDIUM)
-		benchJsonSer(nondeterministicData, "json-ser", ITER_COUNT_MINI)
-		benchJsonDeser(nondeterministicData, "json-deser", ITER_COUNT_MINI)
-		benchJsoniterSer(nondeterministicData, "json-ser", ITER_COUNT_MINI)
-		benchJsoniterDeser(nondeterministicData, "json-deser", ITER_COUNT_MINI)
+		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
+		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortSmall)
+		benchComplexAutoVectoLoop(nondeterministicData, "complexAutoVectoLoop", effortBig)
+		benchTrivialAutoVectoLoop(nondeterministicData, "trivialAutoVectoLoop", effortMedium)
+		benchBranchingAutoVectoLoop(nondeterministicData, "branchingAutoVectoLoop", effortMedium)
+		benchItoa(nondeterministicData, "itoa", effortBig)
+		//benchJsonSer(nondeterministicData, "json-ser", effortSmall)
+		//benchJsonDeser(nondeterministicData, "json-deser", effortSmall)
+		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
+		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
 	}
 }
 
@@ -140,11 +140,11 @@ var message = DummyMessage{
 	Junk: "",
 }
 
-func benchJsoniterSer(nondeterministicData [512]int32, bench string, iterCount int32) {
+func benchJsoniterSer(nondeterministicData [512]int32, bench string, iterCount int) {
 	var result = int64(nondeterministicData[0])
 	runtime.GC()
 	var t0 = time.Now().UnixMilli()
-	for j := 0; j < int(iterCount); j++ {
+	for j := 0; j < iterCount; j++ {
 		message.Id = result
 		encoded, _ := jsoniter.Marshal(message)
 		result += int64(len(encoded))
@@ -154,31 +154,33 @@ func benchJsoniterSer(nondeterministicData [512]int32, bench string, iterCount i
 
 	printResultFull(bench, "go-jsoniter", strconv.FormatInt(result, 10), t1, t0)
 }
-func benchJsonSer(nondeterministicData [512]int32, bench string, iterCount int32) {
-	var result = int64(nondeterministicData[0])
-	runtime.GC()
-	var t0 = time.Now().UnixMilli()
-	for j := 0; j < int(iterCount); j++ {
-		message.Id = result
-		encoded, _ := json.Marshal(message)
-		result += int64(len(encoded))
+
+/*
+	func benchJsonSer(nondeterministicData [512]int32, bench string, iterCount int) {
+		var result = int64(nondeterministicData[0])
+		runtime.GC()
+		var t0 = time.Now().UnixMilli()
+		for j := 0; j < int(iterCount); j++ {
+			message.Id = result
+			encoded, _ := json.Marshal(message)
+			result += int64(len(encoded))
+		}
+
+		var t1 = time.Now().UnixMilli()
+
+		printResultFull(bench, "go-json", strconv.FormatInt(result, 10), t1, t0)
 	}
+*/
+const DeserJsonSpaced = `{"id":1 , "map" : { "uno" : 11 , "dos" : 222 } , "vec" : [ 1234 , 12345 ],"junk":"hd83hd89" }`
 
-	var t1 = time.Now().UnixMilli()
-
-	printResultFull(bench, "go-json", strconv.FormatInt(result, 10), t1, t0)
-}
-
-const DESER_JSON_SPACED = `{"id":1 , "map" : { "uno" : 11 , "dos" : 222 } , "vec" : [ 1234 , 12345 ],"junk":"hd83hd89" }`
-
-func benchJsoniterDeser(nondeterministicData [512]int32, bench string, iterCount int32) {
+func benchJsoniterDeser(nondeterministicData [512]int32, bench string, iterCount int) {
 	var result = int64(nondeterministicData[0])
 	runtime.GC()
 	var t0 = time.Now().UnixMilli()
-	var encoded = []byte(DESER_JSON_SPACED)
+	var encoded = []byte(DeserJsonSpaced)
 	var zeroAscii byte = '0'
 
-	for j := 0; j < int(iterCount); j++ {
+	for j := 0; j < iterCount; j++ {
 		encoded[6] = zeroAscii + byte(result%8)
 		decoded := DummyMessage{}
 		_ = jsoniter.Unmarshal(encoded, &decoded)
@@ -193,29 +195,31 @@ func benchJsoniterDeser(nondeterministicData [512]int32, bench string, iterCount
 
 	printResultFull(bench, "go-jsoniter", strconv.FormatInt(result, 10), t1, t0)
 }
-func benchJsonDeser(nondeterministicData [512]int32, bench string, iterCount int32) {
-	var result = int64(nondeterministicData[0])
-	runtime.GC()
-	var t0 = time.Now().UnixMilli()
-	var encoded = []byte(DESER_JSON_SPACED)
-	var zeroAscii byte = '0'
 
-	for j := 0; j < int(iterCount); j++ {
-		encoded[6] = zeroAscii + byte(result%8)
-		decoded := DummyMessage{}
-		_ = json.Unmarshal(encoded, &decoded)
-		w := int64(len(decoded.Junk))
-		x := decoded.Id
-		y := decoded.Vec[0]
-		z := decoded.Map["uno"]
-		result += w + x + y + z
+/*
+	func benchJsonDeser(nondeterministicData [512]int32, bench string, iterCount int) {
+		var result = int64(nondeterministicData[0])
+		runtime.GC()
+		var t0 = time.Now().UnixMilli()
+		var encoded = []byte(DESER_JSON_SPACED)
+		var zeroAscii byte = '0'
+
+		for j := 0; j < int(iterCount); j++ {
+			encoded[6] = zeroAscii + byte(result%8)
+			decoded := DummyMessage{}
+			_ = json.Unmarshal(encoded, &decoded)
+			w := int64(len(decoded.Junk))
+			x := decoded.Id
+			y := decoded.Vec[0]
+			z := decoded.Map["uno"]
+			result += w + x + y + z
+		}
+
+		var t1 = time.Now().UnixMilli()
+
+		printResultFull(bench, "go-json", strconv.FormatInt(result, 10), t1, t0)
 	}
-
-	var t1 = time.Now().UnixMilli()
-
-	printResultFull(bench, "go-json", strconv.FormatInt(result, 10), t1, t0)
-}
-
+*/
 func benchItoa(nondeterministicData [512]int32, bench string, iterCount int) {
 
 	var result = nondeterministicData[0]
@@ -264,7 +268,7 @@ func benchBranchingAutoVectoLoop(nondeterministicData [512]int32, bench string, 
 		}
 	}
 	var t1 = time.Now().UnixMilli()
-	printResult(bench, strconv.FormatInt(int64(result), 10), t1, t0)
+	printResult(bench, strconv.FormatInt(result, 10), t1, t0)
 }
 
 func printResult(bench string, result string, t1 int64, t0 int64) {
@@ -297,4 +301,14 @@ func nondeterministicArray() [512]int32 {
 		}
 	}
 	return result
+}
+
+func parseEffort() int {
+	envVar := os.Getenv("LANG_BENCH_EFFORT")
+	intValue, err := strconv.Atoi(envVar)
+	if err != nil {
+		return 1
+	} else {
+		return intValue
+	}
 }

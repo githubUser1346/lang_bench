@@ -36,12 +36,11 @@ class BenchStats {
             aggregations.sortBy { it.mean }
         }
         return aggregationsPerBench
-
     }
 
     fun computeSummary(): String {
         val sb = StringBuilder()
-        sb.append("Benchmark Summary (Smaller percentage is better) (Ignored $WARMUP_COUNT warmups)\n")
+        sb.append("Benchmark Summary (Smaller percentage is better) (Ignored $WARMUP_COUNT warmups) (effort=${System.getenv("LANG_BENCH_EFFORT")}) \n")
         val aggregationsPerBench = computeAggregationPerBench()
         for (entry: Map.Entry<String, MutableList<BenchResultAggregation>> in aggregationsPerBench) {
             val benchName = entry.key

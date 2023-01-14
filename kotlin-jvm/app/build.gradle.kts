@@ -10,10 +10,10 @@ repositories {
     mavenCentral()
 }
 
-tasks.withType(KotlinCompile::class.java).all {
-    kotlinOptions.freeCompilerArgs =
-        listOf(*kotlinOptions.freeCompilerArgs.toTypedArray(), "-Xadd-modules=jdk.incubator.vector")
-}
+//tasks.withType(KotlinCompile::class.java).all {
+//    kotlinOptions.freeCompilerArgs =
+//        listOf(*kotlinOptions.freeCompilerArgs.toTypedArray(), "-Xadd-modules=jdk.incubator.vector")
+//}
 
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
@@ -34,10 +34,10 @@ dependencies {
 
 application {
     mainClass.set("slacroix.AppKt")
-    applicationDefaultJvmArgs = listOf("--add-modules", "jdk.incubator.vector")
+//    applicationDefaultJvmArgs = listOf("--add-modules", "jdk.incubator.vector")
 }
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    //jvmArgs("--add-modules", "jdk.incubator.vector")
 }

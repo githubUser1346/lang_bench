@@ -8,32 +8,32 @@ extern crate byteorder;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::env;
 use std::time::{Duration, Instant};
 
-use rand::{Rng};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-
-const ITER_COUNT_MINI: i32 = 100_000;
-const ITER_COUNT_SMALL: i32 = 1_000_000;
-const ITER_COUNT_MEDIUM: i32 = 10_000_000;
-const ITER_COUNT_LARGE: i32 = 100_000_000;
-
-const NUM_THREADS: i32 = 16;
-
 fn main() {
+    let effort: i32 = parse_effort();
+    let effort_small: i32 = 10_000 * effort;
+    let effort_medium: i32 = 100_000 * effort;
+    let effort_big: i32 = 1_000_000 * effort;
+
+    println!("# effort: {}", effort);
+
     for i in 1..5 {
         let nondeterministic_data: Vec<i32> = nondeterministic_array();
 
         let mut results: Vec<String> = vec!();
-        results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", ITER_COUNT_MEDIUM));
-        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", ITER_COUNT_MINI));
-        results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexAutoVectoLoop", ITER_COUNT_MEDIUM));
-        results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialAutoVectoLoop", ITER_COUNT_SMALL));
-        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingAutoVectoLoop", ITER_COUNT_SMALL));
-        results.push(bench_itoa(&nondeterministic_data, "itoa", ITER_COUNT_MEDIUM));
-        results.push(bench_json_ser(&nondeterministic_data, "json-ser", ITER_COUNT_MINI));
-        results.push(bench_json_deser(&nondeterministic_data, "json-deser", ITER_COUNT_MINI));
+        results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
+        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_small));
+        results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexAutoVectoLoop", effort_big));
+        results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialAutoVectoLoop", effort_medium));
+        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingAutoVectoLoop", effort_medium));
+        results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
+        results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
+        results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
 
         if 1 < i {
             for r in results {
@@ -63,7 +63,7 @@ fn bench_non_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_coun
     //This four nested loops provides lots of random data for cheap since
     // 1- Everything is precomputed
     // 2- It uses the 512 bytes all the times.
-    // A large machine effort would shadow the language logic effort.
+    // A large machine EFFORT would shadow the language logic EFFORT.
     for i in nondeterministic_data {
         for j in nondeterministic_data {
             for k in nondeterministic_data {
@@ -337,28 +337,16 @@ fn nondeterministic_array() -> Vec<i32> {
     return result;
 }
 
-/*
-
-fun theoretically_nondeterministic_data_array(): IntArray {
-    val size = 512
-    val result = IntArray(size)
-    for (i in 0 until size) {
-        val randomLong = random.nextLong()
-        if (randomLong == 1L) {
-            // The compiler needs to conclude that this branch is randomly called, but humans dont need to.
-            // If ever this is invoked, the benchmark will fail during the result verification in BenchRunner.
-            result[i] = randomLong.toInt()
-        } else {
-            result[i] = i
-        }
-    }
-    return result
+fn parse_effort() -> i32 {
+    let effort_string = env::var("LANG_BENCH_EFFORT").unwrap();
+    let parsed = effort_string.parse();
+    return if parsed.is_ok() {
+        parsed.unwrap()
+    } else {
+        1
+    };
 }
 
-*/
-
-
-fn f() -> u32 { 0 }
 
 #[cfg(test)]
 mod test {
