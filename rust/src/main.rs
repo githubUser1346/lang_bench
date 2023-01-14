@@ -338,7 +338,7 @@ fn nondeterministic_array() -> Vec<i32> {
 }
 
 fn parse_effort() -> i32 {
-    let effort_string = env::var("LANG_BENCH_EFFORT").unwrap();
+    let effort_string = env::var("LANG_BENCH_EFFORT").unwrap_or("1".to_string());
     let parsed = effort_string.parse();
     return if parsed.is_ok() {
         parsed.unwrap()

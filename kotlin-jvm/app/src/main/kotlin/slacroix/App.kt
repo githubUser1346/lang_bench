@@ -1145,7 +1145,7 @@ fun benchSimdVectoLoop(iterCount: Int, seed: Int, species: VectorSpecies<Int>): 
 )
 
 private fun parseEffort(): Int {
-    val effortString = System.getenv("LANG_BENCH_EFFORT")
+    val effortString: String = System.getenv("LANG_BENCH_EFFORT") ?: "1"
     return try {
         effortString.toInt()
     } catch (ex: NumberFormatException) {
