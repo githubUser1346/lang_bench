@@ -73,40 +73,39 @@ Here are a few things that describe the benchmarks we have here (TLDR, they are 
 # Sample Result
 
 ```
-i7-7500U
-Benchmark Summary (Smaller percentage is better) (Ignored 2 warmups) (effort=400) 
-  nonVectoLoop                     scale:  1773ms
-    go                               mean: 82%, meanDiff:  1%
-    kotlin-jvm                       mean: 84%, meanDiff:  5%
-    rust                             mean:100%, meanDiff:  1%
-  branchingNonVectoLoop            scale:  3789ms
-    rust                             mean: 39%, meanDiff:  0%
-    go                               mean: 69%, meanDiff:  1%
-    kotlin-jvm                       mean:100%, meanDiff: 78%
-  complexAutoVectoLoop             scale:   931ms
-    rust                             mean: 64%, meanDiff:  1%
-    kotlin-jvm                       mean: 79%, meanDiff:  2%
-    go                               mean:100%, meanDiff:  1%
-  trivialAutoVectoLoop             scale: 12689ms
-    rust                             mean: 12%, meanDiff:  0%
-    kotlin-jvm                       mean: 50%, meanDiff:  0%
-    go                               mean:100%, meanDiff:  1%
-  branchingAutoVectoLoop           scale: 19131ms
-    rust                             mean: 14%, meanDiff:  0%
-    go                               mean: 76%, meanDiff:  0%
-    kotlin-jvm                       mean:100%, meanDiff: 34%
-  itoa                             scale: 17550ms
-    rust                             mean: 19%, meanDiff:  0%
-    kotlin-jvm-heapless              mean: 45%, meanDiff:  2%
-    kotlin-jvm                       mean: 45%, meanDiff:  0%
-    go                               mean:100%, meanDiff:  1%
-  json-ser                         scale:  2365ms
-    rust-serde                       mean: 27%, meanDiff:  0%
-    kotlin-jvm-jsoniter              mean: 89%, meanDiff:  1%
+Benchmark Summary (Smaller percentage is better) (Ignored 2 warmups) (effort=200) 
+  json-ser                         scale:   772ms
+    rust-serde                       mean: 16%, meanDiff:  0%
+    kotlin-jvm-jsoniter              mean: 91%, meanDiff:  4%
+    go-jsoniter                      mean:100%, meanDiff:  3%
+  json-deser                       scale:  1628ms
+    rust-serde                       mean: 44%, meanDiff:  1%
+    kotlin-jvm-jsoniter              mean: 49%, meanDiff:  2%
     go-jsoniter                      mean:100%, meanDiff:  2%
-  json-deser                       scale:  4720ms
-    rust-serde                       mean: 44%, meanDiff:  0%
-    kotlin-jvm-jsoniter              mean: 53%, meanDiff:  1%
-    go-jsoniter                      mean:100%, meanDiff:  1%
+  itoa                             scale:  5438ms
+    rust                             mean: 30%, meanDiff:  1%
+    kotlin-jvm-heapless              mean: 45%, meanDiff:  1%
+    kotlin-jvm                       mean: 51%, meanDiff:  2%
+    go                               mean:100%, meanDiff:  2%
+  nonVectoLoop                     scale:   694ms
+    kotlin-jvm                       mean: 87%, meanDiff:  3%
+    go                               mean: 94%, meanDiff:  1%
+    rust                             mean:100%, meanDiff:  2%
+  branchingNonVectoLoop            scale:  1031ms
+    rust                             mean: 58%, meanDiff:  0%
+    kotlin-jvm                       mean: 76%, meanDiff: 13%
+    go                               mean:100%, meanDiff:  1%
+  complexAutoVectoLoop             scale:   384ms
+    rust                             mean: 67%, meanDiff:  2%
+    kotlin-jvm                       mean: 92%, meanDiff:  5%
+    go                               mean:100%, meanDiff:  2%
+  trivialAutoVectoLoop             scale:  7585ms
+    rust                             mean:  9%, meanDiff:  0%
+    kotlin-jvm                       mean: 35%, meanDiff:  1%
+    go                               mean:100%, meanDiff:  1%
+  branchingAutoVectoLoop           scale:  7038ms
+    rust                             mean: 11%, meanDiff:  0%
+    go                               mean: 83%, meanDiff:  2%
+    kotlin-jvm                       mean:100%, meanDiff:  1%
 
 ```
