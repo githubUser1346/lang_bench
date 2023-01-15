@@ -11,8 +11,4 @@ RUN git checkout dev
 # The first compilation is slow and downloads a bunch of things in the image.
 RUN bash gradlew run
 
-#RUN echo Hello 83hf83hr234
-
-#Renaming that file to avoid clashing with the one coming from git.
-COPY docker.sh docker.copy.sh
-CMD bash docker.copy.sh
+CMD bash docker.sh

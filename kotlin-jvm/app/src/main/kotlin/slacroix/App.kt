@@ -25,7 +25,7 @@ var nondeterministicData: IntArray = IntArray(0)
 
 
 fun main() {
-    println("# effort:$effort")
+    println("# effort: $effort")
 
     val benches = listOf(
         Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),

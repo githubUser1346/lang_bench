@@ -1,4 +1,3 @@
-cd /lang_bench
+# Breaking the orthodoxy but "git pull" will save lots of rebuilding.
 git pull
-cd benchrunner
 ./gradlew run
