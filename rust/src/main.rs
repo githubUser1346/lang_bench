@@ -24,16 +24,17 @@ fn main() {
 
     for i in 1..5 {
         let nondeterministic_data: Vec<i32> = nondeterministic_array();
-
         let mut results: Vec<String> = vec!();
+
+        results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
+        results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
+        results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
+
         results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
         results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_small));
         results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexAutoVectoLoop", effort_big));
         results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialAutoVectoLoop", effort_medium));
         results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingAutoVectoLoop", effort_medium));
-        results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
-        results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
-        results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
 
         if 1 < i {
             for r in results {
@@ -68,8 +69,11 @@ fn bench_non_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_coun
         for j in nondeterministic_data {
             for k in nondeterministic_data {
                 for l in nondeterministic_data {
-                    let s = (*i as i64 + *j as i64 + *k as i64 + 3 * *l as i64 + result) % 1000;
-                    result += s;
+                    let i64 = *i as i64;
+                    let j64 = *j as i64;
+                    let k64 = *k as i64;
+                    let l64 = *l as i64;
+                    result += (i64 * j64 + k64 * l64 + result) % 1000;
 
                     counter += 1;
                     if counter >= iter_count {
@@ -93,8 +97,11 @@ fn bench_complex_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, 
         for j in nondeterministic_data {
             for k in nondeterministic_data {
                 for l in nondeterministic_data {
-                    let s = (*i as i64 + *j as i64 + *k as i64 + 3 * *l as i64 + 7) % 1000;
-                    result += s;
+                    let i64 = *i as i64;
+                    let j64 = *j as i64;
+                    let k64 = *k as i64;
+                    let l64 = *l as i64;
+                    result += (i64 * j64 + k64 * l64 + 7) % 1000;
 
                     counter += 1;
                     if counter >= iter_count {

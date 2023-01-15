@@ -28,16 +28,16 @@ func main() {
 	fmt.Printf("# effort: %d\n", effort)
 	for i := 0; i < 5; i++ {
 		var nondeterministicData = nondeterministicArray()
+
+		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
+		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
 		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
+
 		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortSmall)
 		benchComplexAutoVectoLoop(nondeterministicData, "complexAutoVectoLoop", effortBig)
 		benchTrivialAutoVectoLoop(nondeterministicData, "trivialAutoVectoLoop", effortMedium)
 		benchBranchingAutoVectoLoop(nondeterministicData, "branchingAutoVectoLoop", effortMedium)
 		benchItoa(nondeterministicData, "itoa", effortBig)
-		//benchJsonSer(nondeterministicData, "json-ser", effortSmall)
-		//benchJsonDeser(nondeterministicData, "json-deser", effortSmall)
-		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
-		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
 	}
 }
 
@@ -51,7 +51,7 @@ func benchNonVectoLoop(nondeterministicData [512]int32, bench string, iterCount 
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i+j+k+3*l) + result) % 1000
+					result += (int64(i*j+k*l) + result) % 1000
 					counter += 1
 					if counter >= iterCount {
 						var t1 = time.Now().UnixMilli()
@@ -75,7 +75,7 @@ func benchComplexAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i+j+k+3*l) + 7) % 1000
+					result += (int64(i*j+k*l) + 7) % 1000
 					counter += 1
 					if counter >= iterCount {
 						var t1 = time.Now().UnixMilli()

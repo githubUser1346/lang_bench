@@ -14,13 +14,6 @@ val effortSmall = 10_000 * effort
 val effortMedium = 100_000 * effort
 val effortBig = 1_000_000 * effort
 
-interface Bench2 {
-    val iterCount: Int
-    fun name(): String = javaClass.simpleName
-    fun setup(seed: Int)
-    fun run(): String
-}
-
 var nondeterministicData: IntArray = IntArray(0)
 
 
@@ -28,15 +21,16 @@ fun main() {
     println("# effort: $effort")
 
     val benches = listOf(
+        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
+        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
+        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
+        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
+
         Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
         Bench("branchingNonVectoLoop", "kotlin-jvm", effortSmall, ::benchBranchingNonVectoLoop),
         Bench("complexAutoVectoLoop", "kotlin-jvm", effortBig, ::benchComplexAutoVectoLoop),
         Bench("trivialAutoVectoLoop", "kotlin-jvm", effortMedium, ::benchTrivialAutoVectoLoop),
         Bench("branchingAutoVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
-        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
-        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
-        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
-        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
 
         )
 
@@ -529,7 +523,7 @@ fun benchNonVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    result += (i + j + k + 3 * l + result) % 1000
+                    result += (i * j + k * l + result) % 1000
                     counter += 1
                     if (counter >= iterCount) {
                         return listOf(result.toString())
@@ -550,7 +544,7 @@ fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    val s = (i + j + k + 3 * l + 7) % 1000
+                    val s = (i * j + k * l + 7) % 1000
                     result += s
                     counter += 1
                     if (counter >= iterCount) {
@@ -576,7 +570,15 @@ fun benchTrivialAutoVectoLoop(iterCount: Int): List<String> {
     return listOf(result.toString())
 }
 
+// TODO
+interface Bench2 {
+    val iterCount: Int
+    fun name(): String = javaClass.simpleName
+    fun setup(seed: Int)
+    fun run(): String
+}
 
+// TODO
 class NonVectoLoop(override val iterCount: Int) : Bench2 {
 
     var array = IntArray(0)

@@ -1,6 +1,16 @@
 This project contains simple benchmarks for different languages, and an aggregator
 of results to easily compare the languages.
 
+# Presentation of the benchmarks.
+
+json-ser: Json serialization
+json-deser: Json deserialization
+itoa: Converting integers to strings
+nonVectoLoop: A loop that cannot get Loop Unrolling, or use simd instructions.
+branchingNonVectoLoop: Same as nonVectoLoop but with branching.
+trivialAutoVectoLoop: Adding an array of numbers.
+complexAutoVectoLoop
+
 # Usage
 
 From benchrunner/Dockerfile
