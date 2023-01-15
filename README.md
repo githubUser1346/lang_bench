@@ -1,14 +1,15 @@
-This project contains simple benchmarks for different languages.
+This project contains simple benchmarks for different languages, and an aggregator
+of results to easily compare the languages.
 
 # Usage
 
 From benchrunner/Dockerfile
 
 ```
-sudo docker build  -t bench1 /home/dev/github/lang_bench/benchrunner ; sudo docker run -e LANG_BENCH_EFFORT=4 -it --rm bench1
+sudo docker build  -t bench1 lang_bench/benchrunner ; sudo docker run -e LANG_BENCH_EFFORT=4 -it --rm bench1
 ```
 
-From an IDE by running
+From an IDE by running this file
 
 ```
 benchrunner/App.kt
@@ -45,12 +46,11 @@ Here are a few things that describe the benchmarks we have here (TLDR, they are 
 - We try to target only the cpu efficiency. Each task uses little memory, and no IO.
 - These tasks cannot be optimized away by compilers since 1) they operate on nondeterministic data
   2) their result is eventually printed in stdout 3) each task iteration work on different data.
-- All tasks compute a nonsensical number that means nothing.
-- These nonsensical numbers must be the same for the different implementation of a task, or the
+- All tasks compute a nonsensical integer that means nothing.
+- These nonsensical integer results must be the same for the different implementation of a task, or
+  the
   benchmark fails.
 - The GC is run before starting the measurements in kotlin and go.
-
-export LANG_BENCH_MULTIPLIER=10
 
 # Sample Result
 
