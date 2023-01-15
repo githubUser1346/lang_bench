@@ -55,6 +55,7 @@ Here are a few things that describe the benchmarks we have here (TLDR, they are 
 # Sample Result
 
 ```
+i7-7500U
 Benchmark Summary (Smaller percentage is better) (Ignored 2 warmups) (effort=400) 
   nonVectoLoop                     scale:  1773ms
     go                               mean: 82%, meanDiff:  1%

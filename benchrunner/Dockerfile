@@ -5,12 +5,11 @@ RUN apt-get -qq install openjdk-19-jre-headless
 RUN apt-get -qq install cargo
 RUN apt-get -qq install golang
 RUN apt-get -qq install git
+RUN echo hd83hd93rg
 RUN git clone https://github.com/githubUser1346/lang_bench.git
 WORKDIR /lang_bench/benchrunner
 # RUN git checkout dev
 # The first compilation is slow and downloads a bunch of things in the image.
 RUN bash gradlew run
 
-COPY docker.sh docker.copy.sh
-CMD bash docker.copy.sh
-#CMD bash docker.sh
+CMD bash docker.sh
