@@ -7,8 +7,10 @@ RUN apt-get -qq install golang
 RUN apt-get -qq install git
 RUN git clone https://github.com/githubUser1346/lang_bench.git
 WORKDIR /lang_bench/benchrunner
-RUN git checkout dev
+# RUN git checkout dev
 # The first compilation is slow and downloads a bunch of things in the image.
 RUN bash gradlew run
 
-CMD bash docker.sh
+COPY docker.sh docker.copy.sh
+CMD bash docker.copy.sh
+#CMD bash docker.sh
