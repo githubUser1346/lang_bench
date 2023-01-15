@@ -4,12 +4,20 @@ of results to easily compare the languages.
 # Presentation of the benchmarks.
 
 json-ser: Json serialization
+
 json-deser: Json deserialization
+
 itoa: Converting integers to strings
+
 nonVectoLoop: A loop that cannot get Loop Unrolling, or use simd instructions.
+
 branchingNonVectoLoop: Same as nonVectoLoop but with branching.
+
 trivialAutoVectoLoop: Adding an array of numbers.
-complexAutoVectoLoop
+
+complexAutoVectoLoop: Similar to trivialAutoVectoLoop but with more arithmetic ops.
+
+branchingAutoVectoLoop: Similar to trivialAutoVectoLoop but with branching.
 
 # Usage
 
@@ -34,11 +42,12 @@ LANG_BENCH_EFFORT=4 ./gradlew run
 
 # Env
 
-The LANG_BENCH_EFFORT environment variable can be used to configure how long we are ready to wait
-for the result.
+The LANG_BENCH_EFFORT environment variable can be used to configure how long we are ready to wait for the result.
 More effort means more reliable results.
+The default is LANG_BENCH_EFFORT=1, which is not enough for quality results.
 
 We assume that java, cargo and go are installed in /usr/bin.
+Cargo can also be in ~/.cargo/bin/cargo.
 For dev purposes, that location can be changed in
 
 ```
@@ -54,12 +63,11 @@ Here are a few things that describe the benchmarks we have here (TLDR, they are 
   measured is a loop running a small task many times.
 - Each task is run many times before we start measuring it. We call that the warmup.
 - We try to target only the cpu efficiency. Each task uses little memory, and no IO.
-- These tasks cannot be optimized away by compilers since 1) they operate on nondeterministic data
-  2) their result is eventually printed in stdout 3) each task iteration work on different data.
+- These tasks cannot be optimized away by compilers since 1- they operate on nondeterministic data
+  2- their result is eventually printed in stdout 3- each task iteration work on different data.
 - All tasks compute a nonsensical integer that means nothing.
 - These nonsensical integer results must be the same for the different implementation of a task, or
-  the
-  benchmark fails.
+  the benchmark fails.
 - The GC is run before starting the measurements in kotlin and go.
 
 # Sample Result
