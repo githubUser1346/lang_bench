@@ -19,7 +19,13 @@ var nondeterministicData: IntArray = IntArray(0)
 
 
 fun main() {
-    println("# effort: $effort, VECTOR_ACCESS_OOB_CHECK=${System.getProperty("jdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK")}")
+    println(
+        "# effort: $effort, java.vendor:${System.getProperty("java.vendor")}, java.version:${System.getProperty("java.version")}, VECTOR_ACCESS_OOB_CHECK=${
+            System.getProperty(
+                "jdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK"
+            )
+        }"
+    )
 
     val benches = listOf(
         Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),

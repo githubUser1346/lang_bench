@@ -4,12 +4,10 @@ import process.ProcessBuilder
 import java.nio.file.Paths
 
 val bashPath = "/usr/bin/bash"
-val cargoPath1 = "/usr/bin/cargo"
-val cargoPath2 = "${System.getProperty("user.home")}/.cargo/bin/cargo"
-val denoPath = "/usr/bin/deno"
+val cargoPathPrimary = "${System.getProperty("user.home")}/.cargo/bin/cargo"
+val cargoPathSecondary = "/usr/bin/cargo"
 val goPath = "/usr/bin/go"
 val repoDir = System.getProperty("user.dir").substringBefore("/benchrunner/app")
-
 
 fun main() {
     val benchRunner = BenchRunner()
@@ -32,7 +30,7 @@ private fun buildKotlin(benchRunner: BenchRunner) {
 }
 
 private fun buildRust(benchRunner: BenchRunner) {
-    val cargoPath = if (Paths.get(cargoPath2).toFile().exists()) cargoPath2 else cargoPath1
+    val cargoPath = if (Paths.get(cargoPathPrimary).toFile().exists()) cargoPathPrimary else cargoPathSecondary
     val builder = ProcessBuilder("$cargoPath build --release")
     builder.directory(Paths.get("$repoDir/rust").toFile())
     benchRunner.build(builder)
@@ -55,6 +53,3 @@ private fun execGo(benchRunner: BenchRunner) {
     benchRunner.exec(builder)
 }
 
-private fun execJavascript(benchRunner: BenchRunner) {
-    benchRunner.exec(ProcessBuilder("$denoPath run --allow-read js/main.js"))
-}

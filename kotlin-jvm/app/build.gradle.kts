@@ -28,7 +28,8 @@ dependencies {
 application {
     mainClass.set("slacroix.AppKt")
     applicationDefaultJvmArgs =
-        listOf("--add-modules", "jdk.incubator.vector", "-Djdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK=0")
+//        listOf("--add-modules", "jdk.incubator.vector", "-Djdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK=0")
+        listOf("--add-modules", "jdk.incubator.vector")
 }
 
 tasks.named<Test>("test") {
