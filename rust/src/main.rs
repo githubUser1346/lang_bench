@@ -31,10 +31,11 @@ fn main() {
         results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
 
         results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
-        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_small));
-        results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexAutoVectoLoop", effort_big));
-        results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialAutoVectoLoop", effort_medium));
-        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingAutoVectoLoop", effort_medium));
+        results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
+        results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
+
+        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
+        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingVectoLoop", effort_medium));
 
         if 1 < i {
             for r in results {
@@ -73,14 +74,13 @@ fn bench_non_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_coun
                     let j64 = *j as i64;
                     let k64 = *k as i64;
                     let l64 = *l as i64;
-                    result += (i64 * j64 + k64 * l64 + result) % 1000;
-
-                    counter += 1;
-                    if counter >= iter_count {
-                        let elapsed = start.elapsed();
-                        let result_string = result.to_string();
-                        return to_json(bench, result_string, elapsed);
-                    }
+                    result += (i64 * j64 + k64 * l64 + result) | 1023;
+                }
+                counter += nondeterministic_data.len();
+                if counter >= iter_count as usize {
+                    let elapsed = start.elapsed();
+                    let result_string = result.to_string();
+                    return to_json(bench, result_string, elapsed);
                 }
             }
         }
@@ -101,14 +101,13 @@ fn bench_complex_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, 
                     let j64 = *j as i64;
                     let k64 = *k as i64;
                     let l64 = *l as i64;
-                    result += (i64 * j64 + k64 * l64 + 7) % 1000;
-
-                    counter += 1;
-                    if counter >= iter_count {
-                        let elapsed = start.elapsed();
-                        let result_string = result.to_string();
-                        return to_json(bench, result_string, elapsed);
-                    }
+                    result += (i64 * j64 + k64 * l64 + 7) | 1023;
+                }
+                counter += nondeterministic_data.len();
+                if counter >= iter_count as usize {
+                    let elapsed = start.elapsed();
+                    let result_string = result.to_string();
+                    return to_json2(bench, "rust-auto-vecto", result_string, elapsed);
                 }
             }
         }
@@ -131,7 +130,7 @@ fn bench_trivial_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, 
 
     let elapsed = start.elapsed();
     let result_string = result.to_string();
-    return to_json(bench, result_string, elapsed);
+    return to_json2(bench, "rust-auto-vecto", result_string, elapsed);
 }
 
 
@@ -217,7 +216,6 @@ fn bench_branching_non_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str,
     return to_json2(bench, "rust", result.to_string(), elapsed);
 }
 
-// This method may be auto vectorized. That remains to be seen.
 fn bench_branching_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
     let mut result: i64 = 0;
     let start = Instant::now();
@@ -232,7 +230,7 @@ fn bench_branching_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str
     }
 
     let elapsed = start.elapsed();
-    return to_json2(bench, "rust", result.to_string(), elapsed);
+    return to_json2(bench, "rust-auto-vecto", result.to_string(), elapsed);
 }
 
 

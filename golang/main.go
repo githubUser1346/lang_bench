@@ -31,13 +31,14 @@ func main() {
 
 		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
 		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
-		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
-
-		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortSmall)
-		benchComplexAutoVectoLoop(nondeterministicData, "complexAutoVectoLoop", effortBig)
-		benchTrivialAutoVectoLoop(nondeterministicData, "trivialAutoVectoLoop", effortMedium)
-		benchBranchingAutoVectoLoop(nondeterministicData, "branchingAutoVectoLoop", effortMedium)
 		benchItoa(nondeterministicData, "itoa", effortBig)
+
+		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
+		benchComplexAutoVectoLoop(nondeterministicData, "complexVectoLoop", effortBig)
+		benchTrivialAutoVectoLoop(nondeterministicData, "trivialVectoLoop", effortMedium)
+
+		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortMedium)
+		benchBranchingAutoVectoLoop(nondeterministicData, "branchingVectoLoop", effortMedium)
 	}
 }
 
@@ -51,13 +52,13 @@ func benchNonVectoLoop(nondeterministicData [512]int32, bench string, iterCount 
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i*j+k*l) + result) % 1000
-					counter += 1
-					if counter >= iterCount {
-						var t1 = time.Now().UnixMilli()
-						printResult(bench, strconv.FormatInt(result, 10), t1, t0)
-						return
-					}
+					result += (int64(i*j+k*l) + result) | 1023
+				}
+				counter += len(nondeterministicData)
+				if counter >= iterCount {
+					var t1 = time.Now().UnixMilli()
+					printResult(bench, strconv.FormatInt(result, 10), t1, t0)
+					return
 				}
 			}
 		}
@@ -75,13 +76,13 @@ func benchComplexAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i*j+k*l) + 7) % 1000
-					counter += 1
-					if counter >= iterCount {
-						var t1 = time.Now().UnixMilli()
-						printResult(bench, strconv.FormatInt(result, 10), t1, t0)
-						return
-					}
+					result += (int64(i*j+k*l) + 7) | 1023
+				}
+				counter += len(nondeterministicData)
+				if counter >= iterCount {
+					var t1 = time.Now().UnixMilli()
+					printResultFull(bench, "go-auto-vecto", strconv.FormatInt(result, 10), t1, t0)
+					return
 				}
 			}
 		}
@@ -105,7 +106,7 @@ func benchTrivialAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 
 	var t1 = time.Now().UnixMilli()
 
-	printResult(bench, strconv.FormatInt(result, 10), t1, t0)
+	printResultFull(bench, "go-auto-vecto", strconv.FormatInt(result, 10), t1, t0)
 
 }
 
@@ -196,30 +197,6 @@ func benchJsoniterDeser(nondeterministicData [512]int32, bench string, iterCount
 	printResultFull(bench, "go-jsoniter", strconv.FormatInt(result, 10), t1, t0)
 }
 
-/*
-	func benchJsonDeser(nondeterministicData [512]int32, bench string, iterCount int) {
-		var result = int64(nondeterministicData[0])
-		runtime.GC()
-		var t0 = time.Now().UnixMilli()
-		var encoded = []byte(DESER_JSON_SPACED)
-		var zeroAscii byte = '0'
-
-		for j := 0; j < int(iterCount); j++ {
-			encoded[6] = zeroAscii + byte(result%8)
-			decoded := DummyMessage{}
-			_ = json.Unmarshal(encoded, &decoded)
-			w := int64(len(decoded.Junk))
-			x := decoded.Id
-			y := decoded.Vec[0]
-			z := decoded.Map["uno"]
-			result += w + x + y + z
-		}
-
-		var t1 = time.Now().UnixMilli()
-
-		printResultFull(bench, "go-json", strconv.FormatInt(result, 10), t1, t0)
-	}
-*/
 func benchItoa(nondeterministicData [512]int32, bench string, iterCount int) {
 
 	var result = nondeterministicData[0]
@@ -268,7 +245,7 @@ func benchBranchingAutoVectoLoop(nondeterministicData [512]int32, bench string, 
 		}
 	}
 	var t1 = time.Now().UnixMilli()
-	printResult(bench, strconv.FormatInt(result, 10), t1, t0)
+	printResultFull(bench, "go-auto-vecto", strconv.FormatInt(result, 10), t1, t0)
 }
 
 func printResult(bench string, result string, t1 int64, t0 int64) {

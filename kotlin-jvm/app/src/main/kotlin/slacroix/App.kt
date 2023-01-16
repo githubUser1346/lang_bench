@@ -5,9 +5,10 @@ package slacroix
 import com.jsoniter.JsonIterator
 import com.jsoniter.annotation.JsonIgnore
 import com.jsoniter.output.JsonStream
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import jdk.incubator.vector.IntVector
+import jdk.incubator.vector.VectorOperators
 import java.util.*
+
 
 var effort = parseEffort()
 val effortSmall = 10_000 * effort
@@ -18,7 +19,7 @@ var nondeterministicData: IntArray = IntArray(0)
 
 
 fun main() {
-    println("# effort: $effort")
+    println("# effort: $effort, VECTOR_ACCESS_OOB_CHECK=${System.getProperty("jdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK")}")
 
     val benches = listOf(
         Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
@@ -27,10 +28,12 @@ fun main() {
         Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
 
         Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
-        Bench("branchingNonVectoLoop", "kotlin-jvm", effortSmall, ::benchBranchingNonVectoLoop),
-        Bench("complexAutoVectoLoop", "kotlin-jvm", effortBig, ::benchComplexAutoVectoLoop),
-        Bench("trivialAutoVectoLoop", "kotlin-jvm", effortMedium, ::benchTrivialAutoVectoLoop),
-        Bench("branchingAutoVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
+        Bench("trivialVectoLoop", "kotlin-jvm-autoVecto", effortMedium, ::benchTrivialAutoVectoLoop),
+        Bench("complexVectoLoop", "kotlin-jvm-autoVecto", effortBig, ::benchComplexAutoVectoLoop),
+        Bench("complexVectoLoop", "kotlin-jvm-simd", effortBig, ::benchComplexSimdVectoLoop),
+
+        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
+        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
 
         )
 
@@ -42,8 +45,14 @@ fun main() {
             val result = bench.runner(bench.iterCount)
             val t1 = System.currentTimeMillis()
             if (1 < i) {
-                val json = Json.encodeToString(
-                    BenchResult.serializer(), BenchResult(bench.impl, bench.name, result.joinToString(), t1 - t0, getConsumedMem())
+                val json = JsonStream.serialize(
+                    BenchResult(
+                        bench.impl,
+                        bench.name,
+                        result.joinToString(),
+                        t1 - t0,
+                        getConsumedMem()
+                    )
                 )
                 println(json)
             }
@@ -55,10 +64,12 @@ fun benchBranchingNonVectoLoop(iterCount: Int): List<String> {
     var result = 0
     for (i in 0 until iterCount) {
         for (value in nondeterministicData) {
-            // value will be in that range [1, 99]
             if (result > 100) {
+                // This prevents this loop to be unrolled/auto-vectorized
                 result = 0
             }
+            // value will be in that range [1, 99]
+            // It is important that this condition is not predicted correctly, otherwise it isnt real branching.
             if (value <= 50) {
                 result += 10
             } else {
@@ -75,6 +86,7 @@ fun benchBranchingAutoVectoLoop(iterCount: Int): List<String> {
     for (i in 0 until iterCount) {
         for (value in nondeterministicData) {
             // value will be in that range [1, 99]
+            // It is important that this condition is not predicted correctly, otherwise it isnt real branching.
             if (value <= 50) {
                 result += 2
             } else {
@@ -99,7 +111,10 @@ data class DummyMessage(
 */
 
 class DummyMessage2(
-    var id: Long? = null, val vec: List<Long>? = null, val map: Map<String, Long>? = null, @JsonIgnore val junk: String? = null
+    var id: Long? = null,
+    val vec: List<Long>? = null,
+    val map: Map<String, Long>? = null,
+    @JsonIgnore val junk: String? = null
 )
 
 // 100x slower than jsoniter as of sept 2022
@@ -207,7 +222,8 @@ fun benchJsoniterSer(iterCount: Int): List<String> {
 }
 
 //private const val DESER_JSON = """{"id":1,"map":{"uno":11,"dos":222},"vec":[1234,12345],"junk":"hd83hd89"}"""
-private const val DESER_JSON_SPACED = """{"id":1 , "map" : { "uno" : 11 , "dos" : 222 } , "vec" : [ 1234 , 12345 ],"junk":"hd83hd89" }"""
+private const val DESER_JSON_SPACED =
+    """{"id":1 , "map" : { "uno" : 11 , "dos" : 222 } , "vec" : [ 1234 , 12345 ],"junk":"hd83hd89" }"""
 
 fun benchJsoniterDeser(iterCount: Int): List<String> {
     val zeroAscii = '0'.code.toByte()
@@ -288,8 +304,8 @@ fun getChars(i: Int, bytes: ByteBuf): Int {
     return charPos
 }
 
-fun stringSize(x: Int): Int {
-    var x = x
+fun stringSize(y: Int): Int {
+    var x = y
     var d = 1
     if (x >= 0) {
         d = 0
@@ -523,11 +539,11 @@ fun benchNonVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    result += (i * j + k * l + result) % 1000
-                    counter += 1
-                    if (counter >= iterCount) {
-                        return listOf(result.toString())
-                    }
+                    result += (i * j + k * l + result) or 1023
+                }
+                counter += nondeterministicData.size
+                if (counter >= iterCount) {
+                    return listOf(result.toString())
                 }
             }
         }
@@ -535,7 +551,6 @@ fun benchNonVectoLoop(iterCount: Int): List<String> {
     throw IllegalStateException()
 }
 
-//TODO Explicit Loop lanes.
 fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
     var counter = 0L
     var result: Long = 0
@@ -544,12 +559,47 @@ fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    val s = (i * j + k * l + 7) % 1000
-                    result += s
-                    counter += 1
-                    if (counter >= iterCount) {
-                        return listOf(result.toString())
-                    }
+                    result += (i * j + k * l + 7) or 1023
+                }
+                counter += nondeterministicData.size
+                if (counter >= iterCount) {
+                    return listOf(result.toString())
+                }
+            }
+        }
+    }
+    throw IllegalStateException()
+}
+
+
+val SPECIES = IntVector.SPECIES_PREFERRED
+val v7 = IntVector.broadcast(SPECIES, 7)
+val v1023 = IntVector.broadcast(SPECIES, 1023)
+
+fun benchComplexSimdVectoLoop(iterCount: Int): List<String> {
+    var counter = 0L
+    var result: Long = 0
+
+    for (i in nondeterministicData) {
+        val vi = IntVector.broadcast(SPECIES, i)
+        for (j in nondeterministicData) {
+            val vj = IntVector.broadcast(SPECIES, j)
+            for (k in nondeterministicData) {
+                var l = 0
+                while (l < nondeterministicData.size) {
+                    val vk = IntVector.broadcast(SPECIES, k)
+                    val vl = IntVector.fromArray(SPECIES, nondeterministicData, l)
+                    val mul1 = vi.mul(vj)
+                    val mul2 = vk.mul(vl)
+                    val sum = mul1.add(mul2).add(v7).or(v1023)
+                    result += sum.reduceLanes(VectorOperators.ADD)
+
+                    l += SPECIES.length()
+                }
+
+                counter += nondeterministicData.size
+                if (counter >= iterCount) {
+                    return listOf(result.toString())
                 }
             }
         }
@@ -593,6 +643,7 @@ class NonVectoLoop(override val iterCount: Int) : Bench2 {
 }
 
 fun nondeterministicArray(): IntArray {
+    // pseudo random data
     val result = intArrayOf(
         36,
         31,
@@ -1120,29 +1171,7 @@ fun nondeterministicArray(): IntArray {
     return result
 }
 
-
-/*
-var benchSimdSumArray = IntArray(0)
-fun benchSimdVectoLoop(iterCount: Int, seed: Int, species: VectorSpecies<Int>): List<String> {
-    if (benchSimdSumArray.isEmpty()) {
-        // Needed to avoid optimization in java
-        benchSimdSumArray = initArrayWithNoise(seed, iterCount)
-    }
-
-    var sum = IntVector.zero(species)
-    var i = 0
-    while (i < benchSimdSumArray.size) {
-        val chunk = IntVector.fromArray(species, benchSimdSumArray, i)
-        sum = sum.add(chunk)
-        i += species.length()
-    }
-    val result = sum.reduceLanes(VectorOperators.ADD)
-    return listOf(result.toString())
-}
-*/
-
-
-@Serializable data class BenchResult(
+data class BenchResult(
     val impl: String, val bench: String, val result: String, val ms: Long, val consumedMemoryMb: Long
 )
 
