@@ -16,5 +16,6 @@ strum_macros = "0.24"
 byteorder = "1.4.3"
 arrayvec = "0.7.2"
 itoa = "1.0.4"
+x86_64 = "0.14.10"
 
 #sqlx = { version = "0.6", features = [ "runtime-tokio-rustls" , "postgres", "macros"] }

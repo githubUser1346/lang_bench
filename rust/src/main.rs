@@ -6,6 +6,7 @@
 
 extern crate byteorder;
 
+use core::arch::x86_64::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
@@ -32,6 +33,7 @@ fn main() {
 
         results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
         results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
+        unsafe { results.push(bench_trivial_simd_vecto_loop_1(&nondeterministic_data, "trivialExplicitVectoLoop", effort_medium)); }
         results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
 
         results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
@@ -115,22 +117,79 @@ fn bench_complex_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, 
     panic!();
 }
 
+
 fn bench_trivial_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
-    let mut result: i32 = 0;
+    let mut result: i64 = 0;
 
     let start = Instant::now();
     for _ in 0..iter_count {
-        let random_start = result % 5;
         // This is our trivial loop. This is just a summation
-        for i in (random_start) as usize..nondeterministic_data.len() {
-            result += nondeterministic_data[i];
+        let noise = result % 4;
+        for i in 0..nondeterministic_data.len() {
+            result += nondeterministic_data[i] as i64 + noise;
         }
-        result %= 1000
+    }
+
+    let elapsed = start.elapsed();
+    let result_string = result.to_string();
+    return to_json(bench, result_string, elapsed);
+}
+
+unsafe fn bench_trivial_simd_vecto_loop_1(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
+    let mut sum: __m256i = _mm256_setzero_si256();
+
+    let start = Instant::now();
+    for i0 in 0..iter_count {
+        let noise: __m256i = _mm256_set1_epi32(i0);
+        let mut i1 = 0;
+        let len = nondeterministic_data.len();
+        while i1 + 8 <= len {
+            let a = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(i1) as *const __m256i);
+            sum = _mm256_add_epi32(sum, a);
+            i1 += 8;
+        }
+    }
+    let mut lane_sums: [i32; 8] = unsafe { core::mem::transmute(sum) };
+    let mut result: i64 = 0;
+    for lane_sum in lane_sums {
+        result += lane_sum as i64;
     }
 
     let elapsed = start.elapsed();
     let result_string = result.to_string();
     return to_json2(bench, "rust-auto-vecto", result_string, elapsed);
+}
+
+unsafe fn sum_array_avx(arr: &[i32]) -> i32 {
+    let mut sum: __m256i = _mm256_setzero_si256();
+    let mut i = 0;
+    let len = arr.len();
+    while i + 8 <= len {
+        let a = _mm256_loadu_si256(arr.as_ptr().add(i) as *const __m256i);
+        sum = _mm256_add_epi32(sum, a);
+        i += 8;
+    }
+    let mut s: [i32; 8] = unsafe { core::mem::transmute(sum) };
+    let mut result: i32 = s.iter().sum();
+    result
+}
+
+unsafe fn bench_trivial_simd_vecto_loop_0(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
+    let start = Instant::now();
+
+    let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+    let b = _mm256_setr_epi32(16, 15, 14, 13, 12, 11, 10, 9);
+
+    let c = unsafe { _mm256_add_epi32(a, b) };
+
+    let d: [i32; 8] = unsafe { core::mem::transmute(c) };
+    let result: String = d.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
+
+    let elapsed = start.elapsed();
+
+    println!("{:?}", result);
+
+    return to_json(bench, result, elapsed);
 }
 
 
@@ -271,59 +330,6 @@ fn bench_json_ser(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32
     }
     let elapsed = start.elapsed();
     return to_json2(bench, "rust-serde", result.to_string(), elapsed);
-}
-
-// fn bench_json_zero_deser(bench: &str, iter_count: i32){
-//     let mut result: i64 = 1;
-//
-//     let encoded_string: String = r###"{"id":1 , "map" : { "uno" : 11 , "dos" : 222 } , "vec" : [ 1234 , 12345 ] }"###.to_string();
-//     let mut encoded_bytes: Vec<u8> = encoded_string.into_bytes();
-//
-//     let start = Instant::now();
-//
-//     for _ in 0..iter_count {
-//         // The modulo is used only to avoid overflows.
-//         result = (result * 31) % 1_000_000;
-//
-//         encoded_bytes[6] = 48 + u8::try_from(result % 8).unwrap();
-//         let encoded_string_mod: Cow<str> = String::from_utf8_lossy(&encoded_bytes);
-//         let decoded: DummyMessage = serde_json::from_str(&encoded_string_mod).unwrap();
-//         let x: i64 = decoded.id;
-//         let y: i64 = decoded.vec[0];
-//         let z: i64 = *decoded.map.get("uno").unwrap();
-//         result += x + &y + &z;
-//     }
-//     let elapsed = start.elapsed();
-//     to_json(bench, result.to_string(), elapsed);
-// }
-
-// fn bench_json_parallel(bench: &str, iter_count: i32) -> Vec<String> {
-//     let mut children: Vec<JoinHandle<Vec<String>>> = Vec::new();
-//
-//     for _ in 0..NUM_THREADS {
-//         let bench2: String = bench.to_string();
-//         let child: JoinHandle<Vec<String>> = std::thread::spawn(move || {
-//             return bench_json(&bench2, iter_count / NUM_THREADS);
-//         });
-//         children.push(child);
-//     }
-//
-//     let mut results: Vec<String> = Vec::new();
-//     for child in children {
-//         let mut r: Vec<String> = child.join().expect("oops! the child thread panicked");
-//         results.append(&mut r);
-//     }
-//     return results;
-// }
-
-fn temp(iter_count: i32) {
-    let mut result: i64 = 1;
-
-    let start = Instant::now();
-
-    for i in 0..iter_count {}
-    let elapsed = start.elapsed();
-    to_json2("hash", "simd-tape", result.to_string(), elapsed);
 }
 
 
