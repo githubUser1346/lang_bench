@@ -29,16 +29,16 @@ func main() {
 	for i := 0; i < 5; i++ {
 		var nondeterministicData = nondeterministicArray()
 
-		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
-		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
-		benchItoa(nondeterministicData, "itoa", effortBig)
-
-		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
+		//benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
+		//benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
+		//benchItoa(nondeterministicData, "itoa", effortBig)
+		//
+		//benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
 		benchComplexAutoVectoLoop(nondeterministicData, "complexVectoLoop", effortBig)
 		benchTrivialAutoVectoLoop(nondeterministicData, "trivialVectoLoop", effortMedium)
 
-		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortMedium)
-		benchBranchingAutoVectoLoop(nondeterministicData, "branchingVectoLoop", effortMedium)
+		//benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortMedium)
+		//benchBranchingAutoVectoLoop(nondeterministicData, "branchingVectoLoop", effortMedium)
 	}
 }
 
@@ -52,7 +52,7 @@ func benchNonVectoLoop(nondeterministicData [512]int32, bench string, iterCount 
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i*j+k*l) + result) | 1023
+					result += (int64(i*j+k*l) + result) & 1023
 				}
 				counter += len(nondeterministicData)
 				if counter >= iterCount {
@@ -76,7 +76,7 @@ func benchComplexAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i*j+k*l) + 7) | 1023
+					result += (int64(i*j+k*l) + 7) & 1023
 				}
 				counter += len(nondeterministicData)
 				if counter >= iterCount {
@@ -91,23 +91,17 @@ func benchComplexAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 }
 
 func benchTrivialAutoVectoLoop(nondeterministicData [512]int32, bench string, iterCount int) {
-	var result int64 = 0
-
+	var result int32 = 0
 	runtime.GC()
 	var t0 = time.Now().UnixMilli()
 	for i := 0; i < iterCount; i++ {
-		var randomStart = int(result % 5)
-		// This is our trivial loop. This is just a summation
-		for j := randomStart; j < len(nondeterministicData); j++ {
-			result += int64(nondeterministicData[j])
+		var mask = int32(i & 1023)
+		for j := 0; j < len(nondeterministicData); j++ {
+			result += nondeterministicData[j] & mask
 		}
-		result %= 1000
 	}
-
 	var t1 = time.Now().UnixMilli()
-
-	printResultFull(bench, "go-auto-vecto", strconv.FormatInt(result, 10), t1, t0)
-
+	printResultFull(bench, "go-auto-vecto", strconv.Itoa(int(result)), t1, t0)
 }
 
 /*

@@ -10,7 +10,7 @@ class BenchRunner() {
     val stats = BenchStats()
 
     fun exec(builder: ProcessBuilder) {
-        ProcessRunner(builder).exec { line: String ->
+        val exitCode = ProcessRunner(builder).exec { line: String ->
             if (line.isNotBlank()) {
                 if (line.trim().startsWith("{") && line.trim().endsWith("}")) {
                     val deserializer = BenchResult.serializer()
@@ -22,12 +22,15 @@ class BenchRunner() {
                 }
             }
         }
+        if (exitCode != 0) {
+            throw RuntimeException("Process exited with $exitCode")
+        }
     }
 
     fun build(builder: ProcessBuilder) {
-        val returnCode: Int = ProcessRunner(builder).exec { }
-        if(returnCode!=0){
-            throw RuntimeException("Build returned $returnCode")
+        val exitCode: Int = ProcessRunner(builder).exec { }
+        if (exitCode != 0) {
+            throw RuntimeException("Build returned $exitCode")
         }
     }
 

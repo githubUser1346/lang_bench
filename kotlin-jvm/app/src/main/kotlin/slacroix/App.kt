@@ -28,20 +28,21 @@ fun main() {
     )
 
     val benches = listOf(
-        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
-        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
-        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
-        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
-
-        Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
+//        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
+//        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
+//        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
+//        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
+//
+//        Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
         Bench("trivialVectoLoop", "kotlin-jvm-autoVecto", effortMedium, ::benchTrivialAutoVectoLoop),
-        Bench("complexVectoLoop", "kotlin-jvm-autoVecto", effortBig, ::benchComplexAutoVectoLoop),
-        Bench("complexVectoLoop", "kotlin-jvm-simd", effortBig, ::benchComplexSimdVectoLoop),
+        Bench("trivialVectoLoop", "kotlin-jvm-explicitVecto", effortMedium, ::benchTrivialExplicitVectoLoop),
+//        Bench("complexVectoLoop", "kotlin-jvm-autoVecto", effortBig, ::benchComplexAutoVectoLoop),
+//        Bench("complexVectoLoop", "kotlin-jvm-explicitVecto", effortBig, ::benchComplexExplicitVectoLoop),
+//
+//        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
+//        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
 
-        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
-        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
-
-        )
+    )
 
     for (i in 1..4) {
         for (bench in benches) {
@@ -545,7 +546,7 @@ fun benchNonVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    result += (i * j + k * l + result) or 1023
+                    result += (i * j + k * l + result) and 1023
                 }
                 counter += nondeterministicData.size
                 if (counter >= iterCount) {
@@ -565,7 +566,7 @@ fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    result += (i * j + k * l + 7) or 1023
+                    result += (i * j + k * l + 7) and 1023
                 }
                 counter += nondeterministicData.size
                 if (counter >= iterCount) {
@@ -582,29 +583,26 @@ val SPECIES = IntVector.SPECIES_PREFERRED
 val v7 = IntVector.broadcast(SPECIES, 7)
 val v1023 = IntVector.broadcast(SPECIES, 1023)
 
-fun benchComplexSimdVectoLoop(iterCount: Int): List<String> {
+fun benchComplexExplicitVectoLoop(iterCount: Int): List<String> {
     var counter = 0L
-    var result: Long = 0
+    var sumVec = IntVector.broadcast(SPECIES, 0)
 
     for (i in nondeterministicData) {
         val vi = IntVector.broadcast(SPECIES, i)
         for (j in nondeterministicData) {
             val vj = IntVector.broadcast(SPECIES, j)
             for (k in nondeterministicData) {
-                var l = 0
-                while (l < nondeterministicData.size) {
+                for (l in nondeterministicData.indices step SPECIES.length()) {
                     val vk = IntVector.broadcast(SPECIES, k)
                     val vl = IntVector.fromArray(SPECIES, nondeterministicData, l)
                     val mul1 = vi.mul(vj)
                     val mul2 = vk.mul(vl)
-                    val sum = mul1.add(mul2).add(v7).or(v1023)
-                    result += sum.reduceLanes(VectorOperators.ADD)
-
-                    l += SPECIES.length()
+                    sumVec = mul1.add(mul2).add(v7).and(v1023)
                 }
 
                 counter += nondeterministicData.size
                 if (counter >= iterCount) {
+                    val result = sumVec.reduceLanes(VectorOperators.ADD)
                     return listOf(result.toString())
                 }
             }
@@ -616,15 +614,27 @@ fun benchComplexSimdVectoLoop(iterCount: Int): List<String> {
 fun benchTrivialAutoVectoLoop(iterCount: Int): List<String> {
     var result = 0
     for (i in 0 until iterCount) {
-        val randomStart = result % 5
-        // This is our trivial loop. This is just a summation
-        for (j in randomStart until nondeterministicData.size) {
-            result += nondeterministicData[j]
+        val mask = i and 1023
+        for (element in nondeterministicData) {
+            result += (element and mask)
         }
-        result %= 1000
     }
     return listOf(result.toString())
 }
+
+fun benchTrivialExplicitVectoLoop(iterCount: Int): List<String> {
+    var sumVec = IntVector.broadcast(SPECIES, 0)
+    for (i in 0 until iterCount) {
+        val maskVec = IntVector.broadcast(SPECIES, i and 1023)
+        for (j in nondeterministicData.indices step SPECIES.length()) {
+            val dataVec = IntVector.fromArray(SPECIES, nondeterministicData, j)
+            sumVec = sumVec.add(dataVec.and(maskVec))
+        }
+    }
+    val result = sumVec.reduceLanes(VectorOperators.ADD)
+    return listOf(result.toString())
+}
+
 
 // TODO
 interface Bench2 {
