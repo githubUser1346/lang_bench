@@ -4,8 +4,6 @@
 #![allow(unreachable_patterns)]
 #![allow(unused_mut)]
 
-extern crate byteorder;
-
 use core::arch::x86_64::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -14,6 +12,8 @@ use std::time::{Duration, Instant};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+
+const LANE_COUNT_256: usize = 8;
 
 fn main() {
     let effort: i32 = parse_effort();
@@ -27,17 +27,20 @@ fn main() {
         let nondeterministic_data: Vec<i32> = nondeterministic_array();
         let mut results: Vec<String> = vec!();
 
-        results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
-        results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
-        results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
+        // results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
+        // results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
+        // results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
+        //
+        // results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
+        unsafe {
+            results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
+            results.push(bench_trivial_avx256_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
+            results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
+            results.push(bench_complex_avx256_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
+        }
 
-        results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
-        results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
-        unsafe { results.push(bench_trivial_avx256_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium)); }
-        results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
-
-        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
-        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingVectoLoop", effort_medium));
+        // results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
+        // results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingVectoLoop", effort_medium));
 
         if 1 < i {
             for r in results {
@@ -76,7 +79,7 @@ fn bench_non_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_coun
                     let j64 = *j as i64;
                     let k64 = *k as i64;
                     let l64 = *l as i64;
-                    result += (i64 * j64 + k64 * l64 + result) & 1023;
+                    result += (i64 * j64 + k64 * l64 + result) & 31;
                 }
                 counter += nondeterministic_data.len();
                 if counter >= iter_count as usize {
@@ -103,8 +106,10 @@ fn bench_complex_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, 
                     let j64 = *j as i64;
                     let k64 = *k as i64;
                     let l64 = *l as i64;
-                    result += (i64 * j64 + k64 * l64 + 7) & 1023;
+                    result += (i64 * j64 + k64 * l64 + 7) & 31;
                 }
+                // println!("{:?}", result);
+
                 counter += nondeterministic_data.len();
                 if counter >= iter_count as usize {
                     let elapsed = start.elapsed();
@@ -122,7 +127,7 @@ unsafe fn bench_complex_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
     let start = Instant::now();
     let mut sum_vec: __m256i = _mm256_setzero_si256();
     let seven_vec: __m256i = _mm256_set1_epi32(7);
-    let mask_vec: __m256i = _mm256_set1_epi32(1023);
+    let mask_vec: __m256i = _mm256_set1_epi32(31);
     for i in nondeterministic_data {
         let i_vec: __m256i = _mm256_set1_epi32(*i);
         for j in nondeterministic_data {
@@ -137,15 +142,36 @@ unsafe fn bench_complex_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
                 //     let l64 = *l as i64;
                 //     result += (i64 * j64 + k64 * l64 + 7) & 1023;
                 // }
-                for (j, _) in nondeterministic_data.iter().step_by(8).enumerate() {
-                    let l_vec: __m256i = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(j) as *const __m256i);
-                    let mul1 = _mm256_mul_epi32(i_vec, j_vec);
-                    let mul2 = _mm256_mul_epi32(k_vec, l_vec);
-                    let add1 = _mm256_add_epi32(mul1, mul2);
-                    let add2 = _mm256_add_epi32(add1, seven_vec);
-                    let add3 = _mm256_add_epi32(add2, sum_vec);
-                    sum_vec = _mm256_and_si256(add3, mask_vec);
+                for (j, _) in nondeterministic_data.iter().step_by(LANE_COUNT_256).enumerate() {
+                    let l_vec: __m256i = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(j * LANE_COUNT_256) as *const __m256i);
+                    let mul1 = _mm256_mullo_epi32(i_vec, j_vec);
+                    let mul2 = _mm256_mullo_epi32(k_vec, l_vec);
+                    let sum1 = _mm256_add_epi32(mul1, mul2);
+                    let sum2 = _mm256_add_epi32(sum1, seven_vec);
+                    let masked_sum = _mm256_and_si256(sum2, mask_vec);
+                    sum_vec = _mm256_add_epi32(sum_vec, masked_sum);
+                    // println!("i,j,k,l");
+                    // print_m256i_as_i32(i_vec);
+                    // print_m256i_as_i32(j_vec);
+                    // print_m256i_as_i32(k_vec);
+                    // print_m256i_as_i32(l_vec);
+                    // println!("mul1, mul2");
+                    // print_m256i_as_i32(mul1);
+                    // print_m256i_as_i32(mul2);
+                    // println!("sum1, sum2");
+                    // print_m256i_as_i32(sum1);
+                    // print_m256i_as_i32(sum2);
+                    // println!("masked_vec");
+                    // print_m256i_as_i32(masked_sum);
+                    // println!("sum_vec");
+                    // print_m256i_as_i32(sum_vec);
+                    // let hor_add = hor_add_i32(sum_vec);
+                    // println!("{:?}", hor_add);
                 }
+                let mut r = hor_add_i32(sum_vec);
+                let rs = r.to_string();
+                // println!("{:?}", rs);
+
 
                 counter += nondeterministic_data.len();
                 if counter >= iter_count as usize {
@@ -160,34 +186,41 @@ unsafe fn bench_complex_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
     panic!();
 }
 
-
+#[inline(never)]
 fn bench_trivial_auto_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
-    let mut result: i32 = 0;
+    let mut result = 0;
 
     let start = Instant::now();
     for i in 0..iter_count {
-        let mask: i32 = i + 25;
+        let mask = i + 31;
         for j in 0..nondeterministic_data.len() {
             result = result + (nondeterministic_data[j] & mask);
         }
     }
-
     let elapsed = start.elapsed();
     let result_string = result.to_string();
-    return to_json(bench, result_string, elapsed);
+    return to_json2(bench, "rust-auto-vecto", result_string, elapsed);
 }
 
+#[inline(never)]
 unsafe fn bench_trivial_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
     let start = Instant::now();
-    let mut sum_vec: __m256i = _mm256_setzero_si256();
+    let mut sum_vec = _mm256_setzero_si256();
     for i in 0..iter_count {
-        let mask = i + 15;
-        let mask_vec: __m256i = _mm256_set1_epi32(mask);
-
-        for (j, _) in nondeterministic_data.iter().step_by(8).enumerate() {
-            let data_vec: __m256i = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(j) as *const __m256i);
-            let masked_vec = _mm256_and_si256(data_vec, mask_vec);
-            sum_vec = _mm256_and_si256(sum_vec, masked_vec);
+        let mask_vec = _mm256_set1_epi32(i + 31);
+        for (j, _) in nondeterministic_data.iter().step_by(LANE_COUNT_256).enumerate() {
+            let data_vec = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(j * LANE_COUNT_256) as *const __m256i);
+            let masked_data_vec = _mm256_and_si256(data_vec, mask_vec);
+            sum_vec = _mm256_add_epi32(sum_vec, masked_data_vec);
+            // println!("mask");
+            // print_m256i_as_i32(mask_vec);
+            // println!("data");
+            // print_m256i_as_i32(data_vec);
+            // println!("masked");
+            // print_m256i_as_i32(masked_data_vec);
+            // println!("sum");
+            // print_m256i_as_i32(sum_vec);
+            // println!("----");
         }
     }
 
@@ -195,7 +228,7 @@ unsafe fn bench_trivial_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
 
     let elapsed = start.elapsed();
     let result_string = result.to_string();
-    return to_json2(bench, "rust-explicit", result_string, elapsed);
+    return to_json2(bench, "rust-explicit-vecto", result_string, elapsed);
 }
 
 fn to_json2(bench: &str, imp: &str, result: String, elapsed: Duration) -> String {
@@ -370,8 +403,8 @@ fn hor_add_i32(vec: __m256i) -> i32 {
         let tmp2 = _mm256_hadd_epi32(tmp1, zero);
         let arr1: [i32; 8] = core::mem::transmute(tmp1);
         let arr2: [i32; 8] = core::mem::transmute(tmp2);
-        println!("{:?}", arr1);
-        println!("{:?}", arr2);
+        // println!("{:?}", arr1);
+        // println!("{:?}", arr2);
         let result = _mm256_extract_epi32::<0>(tmp2) + _mm256_extract_epi32::<4>(tmp2);
         // println!("{:?}", result);
         return result;
@@ -389,7 +422,7 @@ fn demo_shift() {
 
 unsafe fn print_m256i_as_i32(vec: __m256i) {
     let arr: [i32; 8] = core::mem::transmute(vec);
-    println!("{:?}", arr);
+    println!("  {:?}", arr);
 }
 
 unsafe fn print128(vec: __m128i) {

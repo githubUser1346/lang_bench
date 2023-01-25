@@ -76,7 +76,7 @@ func benchComplexAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 		for _, j := range nondeterministicData {
 			for _, k := range nondeterministicData {
 				for _, l := range nondeterministicData {
-					result += (int64(i*j+k*l) + 7) & 1023
+					result += (int64(i*j+k*l) + 7) & 31
 				}
 				counter += len(nondeterministicData)
 				if counter >= iterCount {
@@ -95,7 +95,7 @@ func benchTrivialAutoVectoLoop(nondeterministicData [512]int32, bench string, it
 	runtime.GC()
 	var t0 = time.Now().UnixMilli()
 	for i := 0; i < iterCount; i++ {
-		var mask = int32(i & 1023)
+		var mask = int32(i + 31)
 		for j := 0; j < len(nondeterministicData); j++ {
 			result += nondeterministicData[j] & mask
 		}

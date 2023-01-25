@@ -34,10 +34,10 @@ fun main() {
 //        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
 //
 //        Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
-        Bench("trivialVectoLoop", "kotlin-jvm-autoVecto", effortMedium, ::benchTrivialAutoVectoLoop),
-        Bench("trivialVectoLoop", "kotlin-jvm-explicitVecto", effortMedium, ::benchTrivialExplicitVectoLoop),
-//        Bench("complexVectoLoop", "kotlin-jvm-autoVecto", effortBig, ::benchComplexAutoVectoLoop),
-//        Bench("complexVectoLoop", "kotlin-jvm-explicitVecto", effortBig, ::benchComplexExplicitVectoLoop),
+        Bench("trivialVectoLoop", "kotlin-jvm-auto-vecto", effortMedium, ::benchTrivialAutoVectoLoop),
+        Bench("trivialVectoLoop", "kotlin-jvm-explicit-vecto", effortMedium, ::benchTrivialExplicitVectoLoop),
+        Bench("complexVectoLoop", "kotlin-jvm-auto-vecto", effortBig, ::benchComplexAutoVectoLoop),
+        Bench("complexVectoLoop", "kotlin-jvm-explicit-vecto", effortBig, ::benchComplexExplicitVectoLoop),
 //
 //        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
 //        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
@@ -566,7 +566,7 @@ fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
         for (j in nondeterministicData) {
             for (k in nondeterministicData) {
                 for (l in nondeterministicData) {
-                    result += (i * j + k * l + 7) and 1023
+                    result += (i * j + k * l + 7) and 31
                 }
                 counter += nondeterministicData.size
                 if (counter >= iterCount) {
@@ -579,25 +579,27 @@ fun benchComplexAutoVectoLoop(iterCount: Int): List<String> {
 }
 
 
-val SPECIES = IntVector.SPECIES_PREFERRED
+val SPECIES = IntVector.SPECIES_256
 val v7 = IntVector.broadcast(SPECIES, 7)
-val v1023 = IntVector.broadcast(SPECIES, 1023)
+val v31 = IntVector.broadcast(SPECIES, 31)
 
 fun benchComplexExplicitVectoLoop(iterCount: Int): List<String> {
     var counter = 0L
     var sumVec = IntVector.broadcast(SPECIES, 0)
 
     for (i in nondeterministicData) {
-        val vi = IntVector.broadcast(SPECIES, i)
+        val i_vec = IntVector.broadcast(SPECIES, i)
         for (j in nondeterministicData) {
-            val vj = IntVector.broadcast(SPECIES, j)
+            val j_vec = IntVector.broadcast(SPECIES, j)
             for (k in nondeterministicData) {
+                val k_vec = IntVector.broadcast(SPECIES, k)
                 for (l in nondeterministicData.indices step SPECIES.length()) {
-                    val vk = IntVector.broadcast(SPECIES, k)
-                    val vl = IntVector.fromArray(SPECIES, nondeterministicData, l)
-                    val mul1 = vi.mul(vj)
-                    val mul2 = vk.mul(vl)
-                    sumVec = mul1.add(mul2).add(v7).and(v1023)
+                    val l_vec = IntVector.fromArray(SPECIES, nondeterministicData, l)
+                    val mul1 = i_vec.mul(j_vec)
+                    val mul2 = k_vec.mul(l_vec)
+                    sumVec = sumVec.add(mul1.add(mul2).add(v7).and(v31))
+                    val horArr = sumVec.reduceLanes(VectorOperators.ADD)
+//                    println(horArr)
                 }
 
                 counter += nondeterministicData.size
@@ -614,7 +616,7 @@ fun benchComplexExplicitVectoLoop(iterCount: Int): List<String> {
 fun benchTrivialAutoVectoLoop(iterCount: Int): List<String> {
     var result = 0
     for (i in 0 until iterCount) {
-        val mask = i and 1023
+        val mask = i + 31
         for (element in nondeterministicData) {
             result += (element and mask)
         }
@@ -625,10 +627,12 @@ fun benchTrivialAutoVectoLoop(iterCount: Int): List<String> {
 fun benchTrivialExplicitVectoLoop(iterCount: Int): List<String> {
     var sumVec = IntVector.broadcast(SPECIES, 0)
     for (i in 0 until iterCount) {
-        val maskVec = IntVector.broadcast(SPECIES, i and 1023)
+        val maskVec = IntVector.broadcast(SPECIES, i + 31)
         for (j in nondeterministicData.indices step SPECIES.length()) {
             val dataVec = IntVector.fromArray(SPECIES, nondeterministicData, j)
-            sumVec = sumVec.add(dataVec.and(maskVec))
+            val maskedVec = dataVec.and(maskVec)
+            sumVec = sumVec.add(maskedVec)
+//            println("----")
         }
     }
     val result = sumVec.reduceLanes(VectorOperators.ADD)
