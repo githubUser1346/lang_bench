@@ -29,16 +29,16 @@ func main() {
 	for i := 0; i < 5; i++ {
 		var nondeterministicData = nondeterministicArray()
 
-		//benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
-		//benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
-		//benchItoa(nondeterministicData, "itoa", effortBig)
-		//
-		//benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
+		benchJsoniterSer(nondeterministicData, "json-ser", effortSmall)
+		benchJsoniterDeser(nondeterministicData, "json-deser", effortSmall)
+		benchItoa(nondeterministicData, "itoa", effortBig)
+
+		benchNonVectoLoop(nondeterministicData, "nonVectoLoop", effortBig)
 		benchComplexAutoVectoLoop(nondeterministicData, "complexVectoLoop", effortBig)
 		benchTrivialAutoVectoLoop(nondeterministicData, "trivialVectoLoop", effortMedium)
 
-		//benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortMedium)
-		//benchBranchingAutoVectoLoop(nondeterministicData, "branchingVectoLoop", effortMedium)
+		benchBranchingNonVectoLoop(nondeterministicData, "branchingNonVectoLoop", effortMedium)
+		benchBranchingAutoVectoLoop(nondeterministicData, "branchingVectoLoop", effortMedium)
 	}
 }
 

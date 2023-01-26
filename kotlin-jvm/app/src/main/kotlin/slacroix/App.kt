@@ -28,21 +28,21 @@ fun main() {
     )
 
     val benches = listOf(
-//        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
-//        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
-//        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
-//        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
-//
-//        Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
+        Bench("json-ser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterSer),
+        Bench("json-deser", "kotlin-jvm-jsoniter", effortSmall, ::benchJsoniterDeser),
+        Bench("itoa", "kotlin-jvm", effortBig, ::benchItoa),
+        Bench("itoa", "kotlin-jvm-heapless", effortBig, ::benchItoaHeapless),
+
+        Bench("nonVectoLoop", "kotlin-jvm", effortBig, ::benchNonVectoLoop),
         Bench("trivialVectoLoop", "kotlin-jvm-auto-vecto", effortMedium, ::benchTrivialAutoVectoLoop),
         Bench("trivialVectoLoop", "kotlin-jvm-explicit-vecto", effortMedium, ::benchTrivialExplicitVectoLoop),
         Bench("complexVectoLoop", "kotlin-jvm-auto-vecto", effortBig, ::benchComplexAutoVectoLoop),
         Bench("complexVectoLoop", "kotlin-jvm-explicit-vecto", effortBig, ::benchComplexExplicitVectoLoop),
-//
-//        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
-//        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
 
-    )
+        Bench("branchingNonVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingNonVectoLoop),
+        Bench("branchingVectoLoop", "kotlin-jvm", effortMedium, ::benchBranchingAutoVectoLoop),
+
+        )
 
     for (i in 1..4) {
         for (bench in benches) {

@@ -1,6 +1,5 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![allow(arithmetic_overflow)]
 #![allow(unreachable_patterns)]
 #![allow(unused_mut)]
 
@@ -9,7 +8,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
 use std::time::{Duration, Instant};
-
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -27,20 +25,21 @@ fn main() {
         let nondeterministic_data: Vec<i32> = nondeterministic_array();
         let mut results: Vec<String> = vec!();
 
-        // results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
-        // results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
-        // results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
-        //
-        // results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
+        results.push(bench_json_ser(&nondeterministic_data, "json-ser", effort_small));
+        results.push(bench_json_deser(&nondeterministic_data, "json-deser", effort_small));
+        results.push(bench_itoa(&nondeterministic_data, "itoa", effort_big));
+
+        results.push(bench_non_vecto_loop(&nondeterministic_data, "nonVectoLoop", effort_big));
         unsafe {
             results.push(bench_trivial_auto_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
             results.push(bench_trivial_avx256_vecto_loop(&nondeterministic_data, "trivialVectoLoop", effort_medium));
+            results.push(bench_trivial_avx256_vecto_loop_unrolled(&nondeterministic_data, "trivialVectoLoop", effort_medium));
             results.push(bench_complex_auto_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
             results.push(bench_complex_avx256_vecto_loop(&nondeterministic_data, "complexVectoLoop", effort_big));
         }
 
-        // results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
-        // results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingVectoLoop", effort_medium));
+        results.push(bench_branching_non_vecto_loop(&nondeterministic_data, "branchingNonVectoLoop", effort_medium));
+        results.push(bench_branching_auto_vecto_loop(&nondeterministic_data, "branchingVectoLoop", effort_medium));
 
         if 1 < i {
             for r in results {
@@ -218,11 +217,13 @@ unsafe fn bench_trivial_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
             // print_m256i_as_i32(data_vec);
             // println!("masked");
             // print_m256i_as_i32(masked_data_vec);
-            // println!("sum");
-            // print_m256i_as_i32(sum_vec);
-            // println!("----");
+            // if i == 0 {
+            //     println!("sum");
+            //     print_m256i_as_i32(sum_vec);
+            // }
         }
     }
+    // println!("----");
 
     let mut result = hor_add_i32(sum_vec);
 
@@ -230,6 +231,56 @@ unsafe fn bench_trivial_avx256_vecto_loop(nondeterministic_data: &Vec<i32>, benc
     let result_string = result.to_string();
     return to_json2(bench, "rust-explicit-vecto", result_string, elapsed);
 }
+
+#[inline(never)]
+unsafe fn bench_trivial_avx256_vecto_loop_unrolled(nondeterministic_data: &Vec<i32>, bench: &str, iter_count: i32) -> String {
+    let start = Instant::now();
+    let mut sum_vec = _mm256_setzero_si256();
+    for i in 0..iter_count {
+        let mask_vec = _mm256_set1_epi32(i + 31);
+        for (j, _) in nondeterministic_data.iter().step_by(LANE_COUNT_256 * 8).enumerate() {
+            let offset1 = 8 * j * LANE_COUNT_256;
+            let offset2 = (8 * j + 1) * LANE_COUNT_256;
+            let offset3 = (8 * j + 2) * LANE_COUNT_256;
+            let offset4 = (8 * j + 3) * LANE_COUNT_256;
+            let offset5 = (8 * j + 4) * LANE_COUNT_256;
+            let offset6 = (8 * j + 5) * LANE_COUNT_256;
+            let offset7 = (8 * j + 6) * LANE_COUNT_256;
+            let offset8 = (8 * j + 7) * LANE_COUNT_256;
+            let data_vec_1 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset1) as *const __m256i);
+            let data_vec_2 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset2) as *const __m256i);
+            let data_vec_3 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset3) as *const __m256i);
+            let data_vec_4 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset4) as *const __m256i);
+            let data_vec_5 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset5) as *const __m256i);
+            let data_vec_6 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset6) as *const __m256i);
+            let data_vec_7 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset7) as *const __m256i);
+            let data_vec_8 = _mm256_loadu_si256(nondeterministic_data.as_ptr().add(offset8) as *const __m256i);
+            let masked_data_vec_1 = _mm256_and_si256(data_vec_1, mask_vec);
+            let masked_data_vec_2 = _mm256_and_si256(data_vec_2, mask_vec);
+            let masked_data_vec_3 = _mm256_and_si256(data_vec_3, mask_vec);
+            let masked_data_vec_4 = _mm256_and_si256(data_vec_4, mask_vec);
+            let masked_data_vec_5 = _mm256_and_si256(data_vec_5, mask_vec);
+            let masked_data_vec_6 = _mm256_and_si256(data_vec_6, mask_vec);
+            let masked_data_vec_7 = _mm256_and_si256(data_vec_7, mask_vec);
+            let masked_data_vec_8 = _mm256_and_si256(data_vec_8, mask_vec);
+            let tmp1 = _mm256_add_epi32(masked_data_vec_1, masked_data_vec_2);
+            let tmp2 = _mm256_add_epi32(masked_data_vec_3, masked_data_vec_4);
+            let tmp3 = _mm256_add_epi32(masked_data_vec_5, masked_data_vec_6);
+            let tmp4 = _mm256_add_epi32(masked_data_vec_7, masked_data_vec_8);
+            sum_vec = _mm256_add_epi32(sum_vec, tmp1);
+            sum_vec = _mm256_add_epi32(sum_vec, tmp2);
+            sum_vec = _mm256_add_epi32(sum_vec, tmp3);
+            sum_vec = _mm256_add_epi32(sum_vec, tmp4);
+        }
+    }
+
+    let mut result = hor_add_i32(sum_vec);
+
+    let elapsed = start.elapsed();
+    let result_string = result.to_string();
+    return to_json2(bench, "rust-explicit-vecto-unrolled", result_string, elapsed);
+}
+
 
 fn to_json2(bench: &str, imp: &str, result: String, elapsed: Duration) -> String {
     let imp = imp.to_string();
