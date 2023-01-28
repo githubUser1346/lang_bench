@@ -50,7 +50,7 @@ class BenchStats {
                 val normalizedMean = result.mean / denominator * 100
                 val normalizedMeanDiff = result.meanDiff / denominator * 100
                 sb.append(
-                    "    %-32s mean:%3.0f%%, meanDiff:%3.0f%%".format(
+                    "    %-42s mean:%3.0f%%, meanDiff:%3.0f%%".format(
                         result.impl,
                         normalizedMean,
                         normalizedMeanDiff

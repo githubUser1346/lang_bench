@@ -37,6 +37,7 @@ class BenchRunner() {
     companion object {
         val jsonFormat = Json {
             ignoreUnknownKeys = true
+            isLenient = true
         }
     }
 

@@ -7,6 +7,7 @@ val bashPath = "/usr/bin/bash"
 val cargoPathPrimary = "${System.getProperty("user.home")}/.cargo/bin/cargo"
 val cargoPathSecondary = "/usr/bin/cargo"
 val goPath = "/usr/bin/go"
+val gccPath = "/usr/bin/gcc"
 val repoDir = System.getProperty("user.dir").substringBefore("/benchrunner/app")
 
 fun main() {
@@ -14,11 +15,13 @@ fun main() {
 
     buildKotlin(benchRunner)
     buildRust(benchRunner)
+    build_c(benchRunner)
 
     for (i in 0..3) {
         execKotlin(benchRunner)
         execRust(benchRunner)
         execGo(benchRunner)
+        exec_c(benchRunner)
     }
     println(benchRunner.stats.computeSummary())
 }
@@ -36,6 +39,12 @@ private fun buildRust(benchRunner: BenchRunner) {
     benchRunner.build(builder)
 }
 
+private fun build_c(benchRunner: BenchRunner) {
+    val builder = ProcessBuilder("$gccPath -march=native -O3 -funroll-all-loops main.c")
+    builder.directory(Paths.get("$repoDir/c").toFile())
+    benchRunner.build(builder)
+}
+
 private fun execKotlin(benchRunner: BenchRunner) {
     val builder = ProcessBuilder("$bashPath gradlew --quiet run -x build -x test")
     builder.directory(Paths.get("$repoDir/kotlin-jvm").toFile())
@@ -50,6 +59,11 @@ private fun execRust(benchRunner: BenchRunner) {
 private fun execGo(benchRunner: BenchRunner) {
     val builder = ProcessBuilder("$goPath run main.go")
     builder.directory(Paths.get("$repoDir/golang").toFile())
+    benchRunner.exec(builder)
+}
+
+private fun exec_c(benchRunner: BenchRunner) {
+    val builder = ProcessBuilder("$repoDir/c/a.out")
     benchRunner.exec(builder)
 }
 
